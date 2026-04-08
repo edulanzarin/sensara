@@ -30,8 +30,10 @@ public class CompanionController {
     private final UserRepository userRepository;
 
     @PostMapping("/{userId}")
-    public ResponseEntity<Companion> createProfile(@PathVariable UUID userId,
+    public ResponseEntity<Companion> createProfile(
+            @PathVariable UUID userId,
             @RequestBody @Valid CompanionCreateDto dto) {
+
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -55,7 +57,6 @@ public class CompanionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(companionRepository.save(companion));
     }
 
-    // Rota principal de busca agora aceita parâmetros dinâmicos
     @GetMapping
     public ResponseEntity<Page<Companion>> search(
             @RequestParam(required = false) String state,
@@ -76,7 +77,7 @@ public class CompanionController {
             @RequestBody CompanionUpdateDto dto,
             @AuthenticationPrincipal User loggedUser) {
 
-        // Regra de segurança: Só o próprio dono ou um ADMIN pode editar
+        // companionId == userId por causa do @MapsId
         if (!loggedUser.getId().equals(companionId) && loggedUser.getRole() != UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update your own profile");
         }
@@ -112,5 +113,14 @@ public class CompanionController {
             companion.setBasePrice(dto.basePrice());
 
         return ResponseEntity.ok(companionRepository.save(companion));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<Companion> getMyProfile(@AuthenticationPrincipal User loggedUser) {
+        // @MapsId garante que companion.id == user.id, então findById funciona
+        var companion = companionRepository.findById(loggedUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil não encontrado"));
+
+        return ResponseEntity.ok(companion);
     }
 }

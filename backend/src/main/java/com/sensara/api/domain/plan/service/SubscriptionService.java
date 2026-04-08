@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -23,15 +24,31 @@ public class SubscriptionService {
         return subscriptionRepository.findByCompanionIdAndActiveTrue(companionId)
                 .stream()
                 .findFirst()
-                .map(Subscription::getPlan) // ajustado para method reference
+                .map(Subscription::getPlan)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Companion does not have an active subscription"));
     }
 
-    public void validateMediaUploadLimit(UUID companionId, MediaType type) {
+    public Optional<Plan> findActivePlan(UUID companionId) {
+        return subscriptionRepository.findByCompanionIdAndActiveTrue(companionId)
+                .stream()
+                .findFirst()
+                .map(Subscription::getPlan);
+    }
+
+    public void validateMediaUploadLimit(UUID companionId, MediaType type, boolean isProfilePicture) {
+        // Foto de perfil é sempre liberada — não exige plano
+        if (isProfilePicture && type == MediaType.PHOTO) {
+            long profilePicCount = mediaRepository.countByCompanionIdAndTypeAndIsProfilePicture(
+                    companionId, MediaType.PHOTO, true);
+            // Permite apenas 1 foto de perfil — se já tem, o controller deve deletar a
+            // antiga
+            return;
+        }
+
+        // Para qualquer outra mídia, exige plano ativo
         Plan activePlan = getActivePlan(companionId);
 
-        // ajustado para evitar unboxing nulo
         if (type == MediaType.STORY && Boolean.FALSE.equals(activePlan.getCanPostStories())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Your current plan does not allow posting stories.");

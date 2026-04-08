@@ -25,7 +25,7 @@ public class MediaController {
     private final MediaRepository mediaRepository;
     private final CompanionRepository companionRepository;
     private final StorageService storageService;
-    private final SubscriptionService subscriptionService; // corrigido aqui
+    private final SubscriptionService subscriptionService;
 
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<Media> uploadMedia(
@@ -34,10 +34,18 @@ public class MediaController {
             @RequestParam("type") MediaType type,
             @RequestParam(value = "isProfilePicture", defaultValue = "false") Boolean isProfilePicture) {
 
-        subscriptionService.validateMediaUploadLimit(companionId, type);
+        subscriptionService.validateMediaUploadLimit(companionId, type, isProfilePicture);
 
         var companion = companionRepository.findById(companionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Companion not found"));
+
+        // Se é nova foto de perfil, deleta a antiga do storage e do banco
+        if (Boolean.TRUE.equals(isProfilePicture)) {
+            mediaRepository.findByCompanionIdAndIsProfilePictureTrue(companionId).ifPresent(old -> {
+                storageService.delete(old.getUrl());
+                mediaRepository.delete(old);
+            });
+        }
 
         String fileUrl = storageService.upload(file);
 
@@ -59,10 +67,8 @@ public class MediaController {
     @GetMapping("/stories")
     public ResponseEntity<List<Media>> getActiveStories(@PathVariable UUID companionId) {
         var threshold = LocalDateTime.now().minusHours(24);
-
         var stories = mediaRepository.findByCompanionIdAndTypeAndCreatedAtAfterOrderByCreatedAtDesc(
                 companionId, MediaType.STORY, threshold);
-
         return ResponseEntity.ok(stories);
     }
 }

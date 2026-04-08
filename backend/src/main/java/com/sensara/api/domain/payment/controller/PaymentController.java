@@ -21,7 +21,6 @@ public class PaymentController {
     public record CheckoutResponse(UUID orderId, String checkoutUrl) {
     }
 
-    // Rota que o frontend chama quando a acompanhante clica em "Comprar plano"
     @PostMapping("/checkout/{companionId}")
     public ResponseEntity<CheckoutResponse> checkout(
             @PathVariable UUID companionId,
@@ -31,10 +30,7 @@ public class PaymentController {
         return ResponseEntity.ok(new CheckoutResponse(order.getId(), order.getCheckoutUrl()));
     }
 
-    // Rota webhook (fictícia para você testar a aprovação)
-    // No frontend, você pode criar um botão oculto "Forçar Pagamento" que chama
-    // essa rota
-    // passando a referencia gerada, só para ver a assinatura ativando no banco.
+    // webhook fictício
     @PostMapping("/webhook/mock-approve/{gatewayReference}")
     public ResponseEntity<Void> mockApproveWebhook(@PathVariable String gatewayReference) {
         paymentService.processWebhookApproval(gatewayReference);
