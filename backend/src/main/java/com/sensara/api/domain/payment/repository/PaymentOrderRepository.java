@@ -1,0 +1,10 @@
+package com.sensara.api.domain.payment.repository;
+
+import com.sensara.api.domain.payment.model.PaymentOrder;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, UUID> {
+    Optional<PaymentOrder> findByGatewayReference(String gatewayReference);
+}
