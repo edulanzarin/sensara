@@ -1,6 +1,5 @@
 package com.sensara.api.domain.admin.controller;
 
-import com.sensara.api.domain.companion.model.CompanionVerification;
 import com.sensara.api.domain.companion.model.VerificationStatus;
 import com.sensara.api.domain.companion.repository.CompanionRepository;
 import com.sensara.api.domain.companion.repository.VerificationRepository;
@@ -25,35 +24,74 @@ public class AdminController {
     private final CompanionRepository companionRepository;
     private final PlanRepository planRepository;
 
-    // --- Módulo de Aprovação de Perfis ---
-
-    @GetMapping("/verifications/pending")
-    public ResponseEntity<List<CompanionVerification>> getPendingVerifications() {
-        var pendings = verificationRepository.findByDocumentStatusOrSelfieStatus(
-                VerificationStatus.PENDING, VerificationStatus.PENDING);
-        return ResponseEntity.ok(pendings);
+    public record CompanionInfo(UUID id, String nickname, String city, String state) {
     }
 
-    @PutMapping("/verifications/{companionId}/approve")
+    public record VerificationDto(
+            CompanionInfo companion,
+            String selfieStatus,
+            String documentStatus,
+            String selfieUrl,
+            String documentUrl,
+            Boolean phoneVerified,
+            Integer reliabilityScore) {
+    }
+
+    @GetMapping("/verifications/pending")
+    public ResponseEntity<List<VerificationDto>> getPendingVerifications() {
+        var pendings = verificationRepository.findByDocumentStatusOrSelfieStatus(
+                VerificationStatus.PENDING, VerificationStatus.PENDING);
+
+        var dtos = pendings.stream().map(v -> {
+            var c = v.getCompanion();
+            return new VerificationDto(
+                    new CompanionInfo(c.getId(), c.getNickname(), c.getCity(), c.getState()),
+                    v.getSelfieStatus().name(),
+                    v.getDocumentStatus().name(),
+                    v.getSelfieUrl(),
+                    v.getDocumentUrl(),
+                    v.getPhoneVerified(),
+                    v.getReliabilityScore());
+        }).toList();
+
+        return ResponseEntity.ok(dtos);
+    }
+
+    @PutMapping("/verifications/{companionId}/selfie/{status}")
     @Transactional
-    public ResponseEntity<Void> approveCompanion(@PathVariable UUID companionId) {
+    public ResponseEntity<Void> reviewSelfie(
+            @PathVariable UUID companionId,
+            @PathVariable VerificationStatus status) {
+
+        if (status != VerificationStatus.APPROVED && status != VerificationStatus.REJECTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status inválido.");
+        }
+
         var verification = verificationRepository.findById(companionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Verification not found"));
 
-        verification.setDocumentStatus(VerificationStatus.APPROVED);
-        verification.setSelfieStatus(VerificationStatus.APPROVED);
+        verification.setSelfieStatus(status);
         verificationRepository.save(verification);
-
-        var companion = companionRepository.findById(companionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Companion not found"));
-
-        companion.setVerified(true);
-        companionRepository.save(companion);
-
         return ResponseEntity.noContent().build();
     }
 
-    // --- Módulo de Gestão de Planos ---
+    @PutMapping("/verifications/{companionId}/document/{status}")
+    @Transactional
+    public ResponseEntity<Void> reviewDocument(
+            @PathVariable UUID companionId,
+            @PathVariable VerificationStatus status) {
+
+        if (status != VerificationStatus.APPROVED && status != VerificationStatus.REJECTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status inválido.");
+        }
+
+        var verification = verificationRepository.findById(companionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Verification not found"));
+
+        verification.setDocumentStatus(status);
+        verificationRepository.save(verification);
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/plans")
     public ResponseEntity<Plan> createPlan(@RequestBody Plan plan) {

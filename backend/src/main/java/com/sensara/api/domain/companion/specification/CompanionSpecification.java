@@ -8,7 +8,6 @@ import java.util.ArrayList;
 
 public class CompanionSpecification {
 
-    // Adicione este construtor privado para resolver o aviso do SonarLint
     private CompanionSpecification() {
     }
 
@@ -32,6 +31,7 @@ public class CompanionSpecification {
             if (ethnicity != null)
                 predicates.add(cb.equal(root.get("ethnicity"), ethnicity));
 
+            // Só aparece nas buscas quem tem plano ativo (verified = true)
             predicates.add(cb.isTrue(root.get("verified")));
 
             query.orderBy(cb.desc(root.get("profileViews")));

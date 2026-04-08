@@ -42,14 +42,12 @@ public class PaymentService {
                                 .amount(plan.getPrice())
                                 .build();
 
-                // Chama o mock (futuramente o mercado pago real)
                 String checkoutUrl = paymentGateway.generateCheckout(order);
                 order.setCheckoutUrl(checkoutUrl);
 
                 return paymentRepository.save(order);
         }
 
-        // Este método será chamado pelo webhook do mercado pago
         @Transactional
         public void processWebhookApproval(String gatewayReference) {
                 var order = paymentRepository.findByGatewayReference(gatewayReference)
@@ -57,13 +55,19 @@ public class PaymentService {
                                                 "Order not found"));
 
                 if (order.getStatus() == PaymentStatus.APPROVED) {
-                        return; // Já foi processado
+                        return;
                 }
 
                 order.setStatus(PaymentStatus.APPROVED);
                 paymentRepository.save(order);
 
-                // Ativa a assinatura
+                // Desativa assinaturas antigas
+                var oldSubscriptions = subscriptionRepository
+                                .findByCompanionIdAndActiveTrue(order.getCompanion().getId());
+                oldSubscriptions.forEach(sub -> sub.setActive(false));
+                subscriptionRepository.saveAll(oldSubscriptions);
+
+                // Ativa nova assinatura
                 var subscription = Subscription.builder()
                                 .companion(order.getCompanion())
                                 .plan(order.getPlan())
@@ -71,13 +75,11 @@ public class PaymentService {
                                 .endsAt(LocalDateTime.now().plusDays(order.getPlan().getDurationDays()))
                                 .active(true)
                                 .build();
-
-                // Desativa assinaturas antigas da acompanhante
-                var oldSubscriptions = subscriptionRepository
-                                .findByCompanionIdAndActiveTrue(order.getCompanion().getId());
-                oldSubscriptions.forEach(sub -> sub.setActive(false));
-                subscriptionRepository.saveAll(oldSubscriptions);
-
                 subscriptionRepository.save(subscription);
+
+                // Seta verified = true na acompanhante
+                var companion = order.getCompanion();
+                companion.setVerified(true);
+                companionRepository.save(companion);
         }
 }

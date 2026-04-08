@@ -1,0 +1,24 @@
+package com.sensara.api.domain.companion.dto;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+public record CompanionPublicDto(
+                UUID id,
+                String nickname,
+                String bio,
+                Integer age,
+                Double height,
+                Double weight,
+                String ethnicity,
+                String hairColor,
+                String eyeColor,
+                String state,
+                String city,
+                String neighborhood,
+                BigDecimal basePrice,
+                Boolean verified,
+                Integer profileViews,
+                String profilePictureUrl,
+                Integer reliabilityScore) {
+}

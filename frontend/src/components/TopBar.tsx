@@ -1,9 +1,9 @@
-import { LayoutDashboard, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, User, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../core/context/AuthContext';
 
 export function TopBar() {
-  const { token, isCompanion, logout } = useAuth();
+  const { token, role, isCompanion, logout } = useAuth();
 
   return (
     <header className="fixed top-0 w-full h-16 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 z-50">
@@ -13,7 +13,16 @@ export function TopBar() {
 
       {token ? (
         <div className="flex items-center gap-3">
-          {isCompanion && (
+          {role === 'ADMIN' && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors px-4 py-2 rounded font-semibold text-white text-sm"
+            >
+              <ShieldCheck size={18} />
+              <span className="hidden md:block">Admin</span>
+            </Link>
+          )}
+          {isCompanion && role !== 'ADMIN' && (
             <Link
               to="/dashboard"
               className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 transition-colors px-4 py-2 rounded font-semibold text-white text-sm"

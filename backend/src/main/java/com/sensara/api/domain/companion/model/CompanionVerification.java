@@ -32,15 +32,18 @@ public class CompanionVerification {
     @Builder.Default
     private Boolean phoneVerified = false;
 
-    // Método que calcula a porcentagem (0 a 100)
+    @Column(length = 500)
+    private String selfieUrl;
+
+    @Column(length = 500)
+    private String documentUrl;
+
     public Integer getReliabilityScore() {
         int score = 0;
         if (this.documentStatus == VerificationStatus.APPROVED)
-            score += 40;
+            score += 50;
         if (this.selfieStatus == VerificationStatus.APPROVED)
-            score += 40;
-        if (Boolean.TRUE.equals(this.phoneVerified))
-            score += 20;
+            score += 50;
         return score;
     }
 }

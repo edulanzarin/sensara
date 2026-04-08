@@ -1,10 +1,13 @@
 package com.sensara.api.domain.companion.controller;
 
 import com.sensara.api.domain.companion.dto.CompanionCreateDto;
+import com.sensara.api.domain.companion.dto.CompanionPublicDto;
 import com.sensara.api.domain.companion.dto.CompanionUpdateDto;
 import com.sensara.api.domain.companion.model.Companion;
 import com.sensara.api.domain.companion.repository.CompanionRepository;
+import com.sensara.api.domain.companion.repository.VerificationRepository;
 import com.sensara.api.domain.companion.specification.CompanionSpecification;
+import com.sensara.api.domain.media.repository.MediaRepository;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.sensara.api.domain.user.model.User;
 import com.sensara.api.domain.user.model.UserRole;
@@ -28,6 +31,8 @@ public class CompanionController {
 
     private final CompanionRepository companionRepository;
     private final UserRepository userRepository;
+    private final MediaRepository mediaRepository;
+    private final VerificationRepository verificationRepository;
 
     @PostMapping("/{userId}")
     public ResponseEntity<Companion> createProfile(
@@ -58,7 +63,7 @@ public class CompanionController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Companion>> search(
+    public ResponseEntity<Page<CompanionPublicDto>> search(
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) Integer minAge,
@@ -68,7 +73,21 @@ public class CompanionController {
             Pageable pageable) {
 
         var spec = CompanionSpecification.filter(state, city, minAge, maxAge, maxPrice, ethnicity);
-        return ResponseEntity.ok(companionRepository.findAll(spec, pageable));
+        var page = companionRepository.findAll(spec, pageable)
+                .map(c -> toPublicDto(c));
+        return ResponseEntity.ok(page);
+    }
+
+    @GetMapping("/{companionId}")
+    public ResponseEntity<CompanionPublicDto> getById(@PathVariable UUID companionId) {
+        var companion = companionRepository.findById(companionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Companion not found"));
+
+        // Incrementa visualizações
+        companion.setProfileViews(companion.getProfileViews() + 1);
+        companionRepository.save(companion);
+
+        return ResponseEntity.ok(toPublicDto(companion));
     }
 
     @PutMapping("/{companionId}")
@@ -77,7 +96,6 @@ public class CompanionController {
             @RequestBody CompanionUpdateDto dto,
             @AuthenticationPrincipal User loggedUser) {
 
-        // companionId == userId por causa do @MapsId
         if (!loggedUser.getId().equals(companionId) && loggedUser.getRole() != UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update your own profile");
         }
@@ -117,10 +135,27 @@ public class CompanionController {
 
     @GetMapping("/me")
     public ResponseEntity<Companion> getMyProfile(@AuthenticationPrincipal User loggedUser) {
-        // @MapsId garante que companion.id == user.id, então findById funciona
         var companion = companionRepository.findById(loggedUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil não encontrado"));
-
         return ResponseEntity.ok(companion);
+    }
+
+    // Monta o DTO público buscando a foto de perfil junto
+    private CompanionPublicDto toPublicDto(Companion c) {
+        String profilePicUrl = mediaRepository
+                .findByCompanionIdAndIsProfilePictureTrue(c.getId())
+                .map(m -> m.getUrl())
+                .orElse(null);
+
+        int score = verificationRepository.findById(c.getId())
+                .map(v -> v.getReliabilityScore())
+                .orElse(0);
+
+        return new CompanionPublicDto(
+                c.getId(), c.getNickname(), c.getBio(), c.getAge(),
+                c.getHeight(), c.getWeight(), c.getEthnicity(),
+                c.getHairColor(), c.getEyeColor(), c.getState(),
+                c.getCity(), c.getNeighborhood(), c.getBasePrice(),
+                c.getVerified(), c.getProfileViews(), profilePicUrl, score);
     }
 }

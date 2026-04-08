@@ -9,7 +9,7 @@ export function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -18,15 +18,16 @@ export function Register() {
     setError('');
     setLoading(true);
 
+    // Garante que não vai com token de outra sessão
+    delete api.defaults.headers.common['Authorization'];
+
     try {
       await api.post('/users', { email, password, role: 'CLIENT' });
 
       const loginResponse = await api.post('/auth/login', { email, password });
       const token = loginResponse.data.token;
 
-      // Seta no localStorage ANTES de qualquer coisa
       localStorage.setItem('sensara_token', token);
-      
       login(token);
       navigate('/dashboard');
     } catch (err: any) {
@@ -75,8 +76,8 @@ export function Register() {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded mt-2 transition-colors disabled:opacity-50"
           >

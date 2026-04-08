@@ -5,7 +5,12 @@ import { Register } from './features/auth/Register';
 import { Home } from './features/companion/Home';
 import { Dashboard } from './features/companion/Dashboard';
 import { Profile } from './features/account/Profile';
+import { CompanionProfile } from './features/companion/CompanionProfile';
 import { useAuth } from './core/context/AuthContext';
+import { Search } from './features/search/Search';
+import { Plans } from './features/plans/Plans';
+import { AdminDashboard } from './features/admin/AdminDashboard';
+import { Favorites } from './features/favorites/Favorites';
 import type { JSX } from 'react';
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
@@ -22,6 +27,7 @@ export default function App() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="companions/:id" element={<CompanionProfile />} />
           <Route
             path="dashboard"
             element={
@@ -30,6 +36,17 @@ export default function App() {
               </PrivateRoute>
             }
           />
+        <Route path="search" element={<Search />} />
+        <Route path="plans" element={<Plans />} />
+        <Route
+          path="admin"
+          element={
+            <PrivateRoute>
+              <AdminDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route path="favorites" element={<Favorites />} />
         </Route>
       </Routes>
     </BrowserRouter>
