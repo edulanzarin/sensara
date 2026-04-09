@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../core/api/axios';
 import { useAuth } from '../../core/context/AuthContext';
 import { Mail, Lock } from 'lucide-react';
+import { Input, Button, Alert, Card } from '../../core/ui';
 
 export function Register() {
   const [email, setEmail] = useState('');
@@ -17,16 +18,12 @@ export function Register() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    // Garante que não vai com token de outra sessão
     delete api.defaults.headers.common['Authorization'];
 
     try {
       await api.post('/users', { email, password, role: 'CLIENT' });
-
       const loginResponse = await api.post('/auth/login', { email, password });
       const token = loginResponse.data.token;
-
       localStorage.setItem('sensara_token', token);
       login(token);
       navigate('/dashboard');
@@ -39,56 +36,46 @@ export function Register() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
-      <div className="w-full max-w-md bg-zinc-950 p-8 rounded-xl border border-zinc-800 shadow-2xl">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white">Criar Conta</h2>
-          <p className="text-sm text-zinc-400 mt-2">Acesse os melhores perfis da sua região.</p>
-        </div>
+      <p className="text-3xl font-black tracking-tighter text-red-600 mb-6">SENSARA</p>
+      <Card className="w-full max-w-md p-8">
+        <h2 className="text-xl font-bold text-gray-900 text-center mb-1">Criar Conta</h2>
+        <p className="text-sm text-gray-400 text-center mb-6">Acesse os melhores perfis da sua região.</p>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded mb-6 text-sm text-center">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4"><Alert message={error} /></div>}
 
         <form onSubmit={handleRegister} className="flex flex-col gap-4">
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-            <input
-              type="email"
-              placeholder="E-mail"
-              className="w-full bg-zinc-900 border border-zinc-800 text-white p-3 pl-10 rounded focus:outline-none focus:border-red-600 transition-all"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-            <input
-              type="password"
-              placeholder="Senha (mínimo 6 caracteres)"
-              className="w-full bg-zinc-900 border border-zinc-800 text-white p-3 pl-10 rounded focus:outline-none focus:border-red-600 transition-all"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
+          <Input
+            label="E-mail"
+            type="email"
+            placeholder="seu@email.com"
+            icon={<Mail size={16} />}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Input
+            label="Senha"
+            type="password"
+            placeholder="Mínimo 6 caracteres"
+            icon={<Lock size={16} />}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+          />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded mt-2 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Processando...' : 'Cadastrar'}
-          </button>
+          <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full mt-1">
+            Cadastrar
+          </Button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-zinc-400">
-          Já tem conta? <Link to="/login" className="text-white hover:text-red-500 font-medium">Faça login</Link>
-        </div>
-      </div>
+        <p className="mt-5 text-center text-sm text-gray-400">
+          Já tem conta?{' '}
+          <Link to="/login" className="text-gray-900 hover:text-red-600 font-semibold">
+            Faça login
+          </Link>
+        </p>
+      </Card>
     </div>
   );
 }

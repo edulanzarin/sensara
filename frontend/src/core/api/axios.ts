@@ -5,7 +5,6 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  // Rotas públicas não precisam de token
   const isPublicRoute =
     (config.url === '/auth/login' && config.method === 'post') ||
     (config.url === '/users' && config.method === 'post');

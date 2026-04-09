@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { api } from '../../../core/api/axios';
-import { UploadCloud, Image as ImageIcon, CheckCircle, XCircle } from 'lucide-react';
+import { Camera, CheckCircle, XCircle } from 'lucide-react';
+import { Card, Button, Alert } from '../../../core/ui';
 
 interface MediaUploadProps {
   companionId: string;
@@ -15,49 +16,36 @@ export function MediaUpload({ companionId, onUploadSuccess }: MediaUploadProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
-      
-      // Cria um preview local da imagem
-      const objectUrl = URL.createObjectURL(selectedFile);
-      setPreview(objectUrl);
+      setPreview(URL.createObjectURL(selectedFile));
       setStatus('idle');
     }
   };
 
   const handleUpload = async () => {
     if (!file) return;
-
     setUploading(true);
     setStatus('idle');
 
-    // Para envio de arquivos, precisamos usar FormData
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', 'PHOTO');
     formData.append('isProfilePicture', 'true');
 
     try {
-      // Como o token já está no interceptor do Axios, ele vai automaticamente
       await api.post(`/media/${companionId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
       setStatus('success');
-      onUploadSuccess(); // Avisa o componente pai que o upload terminou
-      
-      // Limpa o estado após sucesso
+      onUploadSuccess();
       setTimeout(() => {
         setFile(null);
         setPreview(null);
         setStatus('idle');
       }, 3000);
-      
-    } catch (error) {
-      console.error('Erro no upload', error);
+    } catch {
       setStatus('error');
     } finally {
       setUploading(false);
@@ -65,76 +53,85 @@ export function MediaUpload({ companionId, onUploadSuccess }: MediaUploadProps) 
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-        <ImageIcon className="text-red-500" size={20} />
-        Foto de Perfil Principal
-      </h3>
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+          <Camera size={16} className="text-red-500" />
+        </div>
+        <h3 className="text-gray-900 font-bold text-sm">Foto de Perfil Principal</h3>
+      </div>
 
-      <div className="flex flex-col md:flex-row gap-6 items-start">
-        {/* Área de Seleção de Arquivo */}
-        <div 
-          className="w-full md:w-1/2 aspect-square border-2 border-dashed border-zinc-700 rounded-lg flex flex-col items-center justify-center p-4 cursor-pointer hover:border-red-500 hover:bg-zinc-800/50 transition-all group relative overflow-hidden"
+      <div className="flex flex-col sm:flex-row gap-4">
+
+        {/* Preview */}
+        <div
           onClick={() => fileInputRef.current?.click()}
+          className="w-full sm:w-40 aspect-square bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-all group relative overflow-hidden flex-shrink-0"
         >
           {preview ? (
-            <img src={preview} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity" />
+            <>
+              <img
+                src={preview}
+                alt="Preview"
+                className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-xs font-semibold text-white bg-black/60 px-2 py-1 rounded-lg">Trocar foto</span>
+              </div>
+            </>
           ) : (
-            <UploadCloud className="text-zinc-500 mb-2 group-hover:text-red-500 transition-colors" size={40} />
+            <div className="flex flex-col items-center gap-2 text-gray-400 group-hover:text-red-400 transition-colors">
+              <Camera size={28} />
+              <span className="text-xs font-medium text-center px-2">Clique para selecionar</span>
+              <span className="text-xs text-gray-300">JPG, PNG até 10MB</span>
+            </div>
           )}
-          
-          <span className="text-sm text-zinc-400 font-medium z-10 text-center bg-black/60 px-2 py-1 rounded">
-            {preview ? 'Clique para trocar' : 'Clique para selecionar uma foto'}
-          </span>
-          <span className="text-xs text-zinc-600 mt-1 z-10 bg-black/60 px-2 py-1 rounded">PNG, JPG até 5MB</span>
-          
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileSelect} 
-            accept="image/*" 
-            className="hidden" 
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/*"
+            className="hidden"
           />
         </div>
 
-        {/* Ações e Status */}
-        <div className="w-full md:w-1/2 flex flex-col gap-4">
-          <p className="text-sm text-zinc-400">
-            Esta foto será exibida no seu card na página inicial. Capriche na qualidade e na iluminação para atrair mais cliques.
+        {/* Ações */}
+        <div className="flex flex-col gap-3 flex-1 justify-between">
+          <p className="text-sm text-gray-400 leading-relaxed">
+            Esta foto será exibida no seu card na página inicial. Use uma foto de boa qualidade e boa iluminação.
           </p>
 
-          <button
-            onClick={handleUpload}
-            disabled={!file || uploading}
-            className={`w-full font-bold py-3 rounded transition-all flex justify-center items-center gap-2
-              ${!file || uploading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 shadow-lg'}
-            `}
-          >
-            {uploading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Enviando...
-              </>
-            ) : (
-              'Salvar Foto de Perfil'
-            )}
-          </button>
-
           {status === 'success' && (
-            <div className="flex items-center gap-2 text-green-500 bg-green-500/10 p-3 rounded text-sm animate-in fade-in">
-              <CheckCircle size={18} />
-              Foto atualizada com sucesso!
-            </div>
+            <Alert
+              message="Foto atualizada com sucesso!"
+              variant="success"
+            />
           )}
-          
+
           {status === 'error' && (
-            <div className="flex items-center gap-2 text-red-500 bg-red-500/10 p-3 rounded text-sm animate-in fade-in">
-              <XCircle size={18} />
-              Erro ao enviar foto. Tente novamente.
-            </div>
+            <Alert
+              message="Erro ao enviar foto. Tente novamente."
+              variant="error"
+            />
           )}
+
+          <Button
+            variant="primary"
+            size="md"
+            loading={uploading}
+            disabled={!file}
+            onClick={handleUpload}
+            className="w-full"
+          >
+            {!uploading && (
+              <>
+                <CheckCircle size={16} />
+                Salvar Foto
+              </>
+            )}
+          </Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

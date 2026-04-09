@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../core/api/axios';
 import { useAuth } from '../../core/context/AuthContext';
 import { type Companion } from '../../core/types/companion';
-import { Star, Camera, Zap } from 'lucide-react';
+import { Star, Camera, Zap, BarChart3 } from 'lucide-react';
 import { BecomeCompanionForm } from './components/BecomeCompanionForm';
 import { VerificationSection } from './components/VerificationSection';
+import { Card, Button } from '../../core/ui';
 
 interface ActivePlan {
   name: string;
@@ -25,8 +26,6 @@ export function Dashboard() {
       const response = await api.get('/companions/me');
       setProfile(response.data);
       setIsCompanion(true);
-
-      // Busca plano ativo
       try {
         const userRes = await api.get('/users/me');
         const subRes = await api.get(`/companions/${userRes.data.id}/subscription`);
@@ -34,7 +33,6 @@ export function Dashboard() {
       } catch {
         setActivePlan(null);
       }
-
     } catch {
       setIsCompanion(false);
     } finally {
@@ -47,7 +45,11 @@ export function Dashboard() {
   }, [token]);
 
   if (loading) {
-    return <div className="p-8 text-center text-zinc-500">Carregando painel...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600" />
+      </div>
+    );
   }
 
   if (showForm) {
@@ -59,74 +61,103 @@ export function Dashboard() {
     );
   }
 
+  // --- TELA DE CLIENTE ---
   if (!isCompanion) {
     return (
-      <div className="px-4 py-8 max-w-3xl mx-auto animate-in fade-in">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center">
-          <div className="w-16 h-16 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Camera className="text-red-500" size={32} />
+      <div className="px-4 py-8 max-w-2xl mx-auto space-y-6 animate-in fade-in">
+        <Card className="p-8 text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Camera className="text-red-500" size={30} />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Quer anunciar no Sensara?</h2>
-          <p className="text-zinc-400 mb-8 max-w-lg mx-auto">
-            Crie seu perfil agora. É necessário preencher suas informações básicas e enviar pelo menos uma foto de perfil para análise.
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Quer anunciar no Sensara?</h2>
+          <p className="text-gray-400 text-sm mb-8 max-w-sm mx-auto">
+            Crie seu perfil agora. Preencha suas informações básicas e envie pelo menos uma foto de perfil.
           </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-colors"
-          >
+          <Button variant="primary" size="lg" onClick={() => setShowForm(true)} className="w-full">
             Tornar-se Acompanhante
-          </button>
-        </div>
-        <div className="mt-8">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Star className="text-yellow-500" size={20} /> Meus Favoritos
+          </Button>
+        </Card>
+
+        <div>
+          <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <Star className="text-yellow-500" size={18} /> Meus Favoritos
           </h3>
-          <p className="text-zinc-500 text-sm">Você ainda não favoritou nenhum perfil.</p>
+          <Card className="p-6 text-center">
+            <p className="text-gray-400 text-sm">Você ainda não favoritou nenhum perfil.</p>
+            <button
+              onClick={() => navigate('/')}
+              className="text-red-500 hover:text-red-600 text-sm font-medium mt-2 transition-colors"
+            >
+              Explorar perfis
+            </button>
+          </Card>
         </div>
       </div>
     );
   }
 
+  // --- TELA DE ACOMPANHANTE ---
   return (
-    <div className="px-4 py-8 max-w-5xl mx-auto space-y-6 animate-in fade-in">
-      <div>
-        <h1 className="text-2xl font-black text-white">Meu Painel</h1>
-        <p className="text-zinc-400">Bem-vinda, {profile?.nickname}.</p>
+    <div className="px-4 py-8 max-w-3xl mx-auto space-y-4 animate-in fade-in">
+
+      {/* Header */}
+      <div className="mb-2">
+        <h1 className="text-2xl font-bold text-gray-900">Meu Painel</h1>
+        <p className="text-gray-400 text-sm">Bem-vinda, {profile?.nickname}.</p>
       </div>
 
+      {/* Banner de plano */}
       {activePlan ? (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 flex items-center justify-between">
+        <Card className="p-4 flex items-center justify-between">
           <div>
-            <p className="text-zinc-400 text-xs uppercase tracking-wide mb-1">Plano ativo</p>
-            <p className="text-white font-bold">{activePlan.name}</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wider mb-0.5">Plano ativo</p>
+            <p className="text-gray-900 font-bold">{activePlan.name}</p>
           </div>
           <button
             onClick={() => navigate('/plans')}
-            className="text-xs text-red-500 hover:text-red-400 transition-colors"
+            className="text-xs text-red-500 hover:text-red-600 font-medium transition-colors"
           >
             Trocar plano
           </button>
-        </div>
+        </Card>
       ) : (
-        <div className="bg-gradient-to-r from-red-950 to-zinc-950 border border-red-800 rounded-xl p-5 flex items-center justify-between gap-4">
+        <div className="bg-red-600 rounded-2xl p-5 flex items-center justify-between gap-4">
           <div>
-            <p className="text-white font-bold mb-1">Seu perfil ainda não está visível</p>
-            <p className="text-zinc-400 text-sm">Assine um plano para aparecer nas buscas.</p>
+            <p className="text-white font-bold mb-0.5">Perfil não está visível</p>
+            <p className="text-red-200 text-sm">Assine um plano para aparecer nas buscas.</p>
           </div>
           <button
             onClick={() => navigate('/plans')}
-            className="flex-shrink-0 flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
+            className="flex-shrink-0 flex items-center gap-2 bg-white hover:bg-red-50 text-red-600 font-bold py-2 px-4 rounded-xl transition-colors text-sm"
           >
-            <Zap size={16} /> Ver planos
+            <Zap size={15} /> Ver planos
           </button>
         </div>
       )}
 
+      {/* Verificação */}
       <VerificationSection />
 
-      <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-        Estatísticas da Acompanhante aqui...
-      </div>
+      {/* Estatísticas placeholder */}
+      <Card className="p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 size={18} className="text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-900">Estatísticas</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Visualizações', value: profile?.profileViews ?? 0 },
+            { label: 'Favoritos', value: '—' },
+            { label: 'Cliques', value: '—' },
+          ].map(stat => (
+            <div key={stat.label} className="bg-gray-50 rounded-xl p-3 text-center">
+              <p className="text-xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
     </div>
   );
 }

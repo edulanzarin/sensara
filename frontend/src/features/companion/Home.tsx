@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../core/api/axios';
 import type { Companion, PageResponse } from '../../core/types/companion';
-import { MapPin, ShieldCheck, User, LocateFixed, ChevronDown } from 'lucide-react';
+import { MapPin, ShieldCheck, User, LocateFixed } from 'lucide-react';
+import { Select } from '../../core/ui';
 
 const STATES = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -10,29 +11,48 @@ const STATES = [
   'RS','RO','RR','SC','SP','SE','TO'
 ];
 
+const STATE_OPTIONS = STATES.map(s => ({ value: s, label: s }));
+
+function useCidades(state: string) {
+  const [cidades, setCidades] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!state) { setCidades([]); return; }
+    setLoading(true);
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${state}/municipios?orderBy=nome`)
+      .then(res => res.json())
+      .then(data => setCidades(data.map((m: any) => m.nome)))
+      .catch(() => setCidades([]))
+      .finally(() => setLoading(false));
+  }, [state]);
+
+  return { cidades, loading };
+}
+
 export function Home() {
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationLoading, setLocationLoading] = useState(false);
-  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedState, setSelectedState] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
   const [detectedState, setDetectedState] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { cidades, loading: loadingCidades } = useCidades(selectedState);
 
-  const fetchCompanions = (state?: string) => {
+  const fetchCompanions = (state?: string, city?: string) => {
     setLoading(true);
-    const params = state ? `?state=${state}` : '';
-    api.get<PageResponse<Companion>>(`/companions${params}`)
+    const params = new URLSearchParams();
+    if (state) params.append('state', state);
+    if (city) params.append('city', city);
+    api.get<PageResponse<Companion>>(`/companions?${params.toString()}`)
       .then(res => setCompanions(res.data.content))
-      .catch(err => console.error('Erro ao carregar perfis', err))
+      .catch(() => {})
       .finally(() => setLoading(false));
   };
 
   const detectLocation = () => {
-    if (!navigator.geolocation) {
-      fetchCompanions();
-      return;
-    }
-
+    if (!navigator.geolocation) { fetchCompanions(); return; }
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -57,96 +77,102 @@ export function Home() {
           setLocationLoading(false);
         }
       },
-      () => {
-        // Negou permissão — busca tudo
-        setLocationLoading(false);
-        fetchCompanions();
-      },
+      () => { setLocationLoading(false); fetchCompanions(); },
       { timeout: 5000 }
     );
   };
 
-  useEffect(() => {
-    detectLocation();
-  }, []);
+  useEffect(() => { detectLocation(); }, []);
 
-  const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const state = e.target.value;
-    setSelectedState(state);
-    fetchCompanions(state || undefined);
+  const handleStateChange = (value: string) => {
+    setSelectedState(value);
+    setSelectedCity('');
+    fetchCompanions(value || undefined);
   };
 
-  const handleClearState = () => {
+  const handleCityChange = (value: string) => {
+    setSelectedCity(value);
+    fetchCompanions(selectedState || undefined, value || undefined);
+  };
+
+  const handleClear = () => {
     setSelectedState('');
+    setSelectedCity('');
     setDetectedState(null);
     fetchCompanions();
   };
 
+  const cityOptions = cidades.map(c => ({ value: c, label: c }));
+
   return (
     <div className="px-4 py-6">
-
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">Acompanhantes em Destaque</h1>
-        <p className="text-zinc-400 text-sm">Encontre o perfil ideal perto de você.</p>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Acompanhantes em Destaque</h1>
+        <p className="text-gray-400 text-sm">Encontre o perfil ideal perto de você.</p>
       </div>
 
-      {/* Filtro de estado */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="relative flex-1">
-          <select
+      {/* Filtros */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Select
+            label="Estado"
             value={selectedState}
             onChange={handleStateChange}
-            className="w-full bg-zinc-900 border border-zinc-800 text-white p-3 pr-8 rounded-lg focus:outline-none focus:border-red-600 transition-all appearance-none text-sm"
-          >
-            <option value="">Todos os estados</option>
-            {STATES.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+            options={STATE_OPTIONS}
+            placeholder="Todos"
+          />
+          <Select
+            label="Cidade"
+            value={selectedCity}
+            onChange={handleCityChange}
+            options={cityOptions}
+            placeholder={loadingCidades ? 'Carregando...' : !selectedState ? 'Selecione estado' : 'Todas'}
+            disabled={!selectedState || loadingCidades}
+          />
         </div>
 
-        <button
-          onClick={detectLocation}
-          disabled={locationLoading}
-          title="Detectar minha localização"
-          className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-red-600 text-zinc-300 px-3 py-3 rounded-lg transition-colors disabled:opacity-50"
-        >
-          <LocateFixed size={18} className={locationLoading ? 'animate-pulse text-red-500' : ''} />
-        </button>
-
-        {selectedState && (
-          <button
-            onClick={handleClearState}
-            className="text-xs text-zinc-500 hover:text-red-500 transition-colors px-2"
-          >
-            Limpar
-          </button>
-        )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            {detectedState && selectedState === detectedState && (
+              <>
+                <LocateFixed size={12} className="text-red-500" />
+                <span>Localização detectada automaticamente</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {(selectedState || selectedCity) && (
+              <button
+                onClick={handleClear}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium"
+              >
+                Limpar
+              </button>
+            )}
+            <button
+              onClick={detectLocation}
+              disabled={locationLoading}
+              title="Detectar localização"
+              className="flex items-center justify-center w-8 h-8 bg-gray-50 border border-gray-200 hover:border-red-500 hover:text-red-500 text-gray-400 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <LocateFixed size={15} className={locationLoading ? 'animate-pulse text-red-500' : ''} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Info de localização detectada */}
-      {detectedState && selectedState === detectedState && (
-        <div className="flex items-center gap-1 text-xs text-zinc-500 mb-4">
-          <LocateFixed size={12} className="text-red-500" />
-          <span>Mostrando perfis em <span className="text-white font-semibold">{detectedState}</span></span>
-        </div>
-      )}
-
-      {/* Loading */}
+      {/* Resultados */}
       {loading ? (
-        <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="flex justify-center items-center min-h-[40vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600" />
         </div>
       ) : companions.length === 0 ? (
-        <div className="text-center py-20 bg-zinc-950 rounded-lg border border-zinc-900 space-y-3">
-          <p className="text-zinc-500">Nenhum perfil encontrado{selectedState ? ` em ${selectedState}` : ''}.</p>
-          {selectedState && (
-            <button
-              onClick={handleClearState}
-              className="text-red-500 hover:text-red-400 text-sm transition-colors"
-            >
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 space-y-3">
+          <p className="text-gray-400">
+            Nenhum perfil encontrado{selectedCity ? ` em ${selectedCity}` : selectedState ? ` em ${selectedState}` : ''}.
+          </p>
+          {(selectedState || selectedCity) && (
+            <button onClick={handleClear} className="text-red-500 hover:text-red-600 text-sm font-medium transition-colors">
               Ver todos os estados
             </button>
           )}
@@ -157,10 +183,9 @@ export function Home() {
             <div
               key={companion.id}
               onClick={() => navigate(`/companions/${companion.id}`)}
-              className="bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-red-600/50 transition-colors cursor-pointer group"
+              className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-red-200 hover:shadow-md transition-all cursor-pointer group"
             >
-              {/* Foto */}
-              <div className="aspect-[3/4] bg-zinc-800 relative overflow-hidden">
+              <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
                 {companion.profilePictureUrl ? (
                   <img
                     src={`http://localhost:8080${companion.profilePictureUrl}`}
@@ -169,26 +194,24 @@ export function Home() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <User size={40} className="text-zinc-600" />
+                    <User size={40} className="text-gray-300" />
                   </div>
                 )}
                 {companion.reliabilityScore === 100 && (
-                  <div className="absolute top-2 right-2 bg-green-500 text-black text-xs font-bold px-2 py-1 rounded flex items-center gap-1 shadow-lg">
-                    <ShieldCheck size={12} /> Verificada
+                  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow">
+                    <ShieldCheck size={11} /> Verificada
                   </div>
                 )}
               </div>
-
-              {/* Infos */}
               <div className="p-3">
-                <h3 className="font-bold text-white text-base truncate group-hover:text-red-500 transition-colors">
+                <h3 className="font-bold text-gray-900 text-sm truncate group-hover:text-red-600 transition-colors">
                   {companion.nickname}, {companion.age}
                 </h3>
-                <div className="flex items-center text-zinc-400 text-xs mt-1 mb-2">
+                <div className="flex items-center text-gray-400 text-xs mt-1 mb-2">
                   <MapPin size={11} className="mr-1 flex-shrink-0" />
                   <span className="truncate">{companion.city}, {companion.state}</span>
                 </div>
-                <p className="text-red-500 font-semibold text-sm">
+                <p className="text-red-600 font-semibold text-sm">
                   R$ {companion.basePrice?.toFixed(2) ?? 'A consultar'}
                 </p>
               </div>

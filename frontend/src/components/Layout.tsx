@@ -4,9 +4,9 @@ import { BottomNav } from './BottomNav';
 
 export function Layout() {
   return (
-    <div className="min-h-screen bg-zinc-900 text-zinc-100 font-sans pb-16 pt-16 md:pb-0">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-16 pt-16">
       <TopBar />
-      <main className="max-w-7xl mx-auto w-full">
+      <main className="w-full">
         <Outlet />
       </main>
       <BottomNav />

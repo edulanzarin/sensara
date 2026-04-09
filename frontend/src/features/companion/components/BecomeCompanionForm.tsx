@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { api } from '../../../core/api/axios';
 import { Camera, ChevronRight, ChevronLeft, User, MapPin } from 'lucide-react';
+import { Input, Select, Textarea, Button, Alert, Card, Field } from '../../../core/ui';
 
 interface FormData {
   nickname: string;
@@ -25,27 +26,19 @@ const INITIAL_FORM: FormData = {
   whatsapp: '', basePrice: '', bio: '',
 };
 
-const ETHNICITY_OPTIONS = ['Branca', 'Parda', 'Negra', 'Asiática', 'Indígena', 'Outra'];
-const HAIR_OPTIONS = ['Loiro', 'Castanho', 'Preto', 'Ruivo', 'Platinado', 'Colorido'];
-const EYE_OPTIONS = ['Castanho', 'Verde', 'Azul', 'Mel', 'Preto', 'Cinza'];
-const STATES = [
-  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
-  'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',
-  'RS','RO','RR','SC','SP','SE','TO'
-];
-
+const ETHNICITY_OPTIONS = ['Branca', 'Parda', 'Negra', 'Asiática', 'Indígena', 'Outra'].map(v => ({ value: v, label: v }));
+const HAIR_OPTIONS = ['Loiro', 'Castanho', 'Preto', 'Ruivo', 'Platinado', 'Colorido'].map(v => ({ value: v, label: v }));
+const EYE_OPTIONS = ['Castanho', 'Verde', 'Azul', 'Mel', 'Preto', 'Cinza'].map(v => ({ value: v, label: v }));
+const STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+const STATE_OPTIONS = STATES.map(s => ({ value: s, label: s }));
 const STEPS = ['Sobre você', 'Localização', 'Foto de perfil'];
 
-// Hook que busca cidades do IBGE pelo estado selecionado
 function useCidades(state: string) {
   const [cidades, setCidades] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!state) {
-      setCidades([]);
-      return;
-    }
+    if (!state) { setCidades([]); return; }
     setLoading(true);
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${state}/municipios?orderBy=nome`)
       .then(res => res.json())
@@ -57,52 +50,25 @@ function useCidades(state: string) {
   return { cidades, loading };
 }
 
-function InputField({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{label}</label>
-      <input
-        {...props}
-        className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
-      />
-    </div>
-  );
-}
-
-function SelectField({ label, options, ...props }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{label}</label>
-      <select
-        {...props}
-        className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all appearance-none"
-      >
-        <option value="">Selecione</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
-  );
-}
-
 function StepIndicator({ current }: { current: number }) {
   return (
     <div className="flex items-center justify-center gap-2 mb-8">
       {STEPS.map((label, i) => (
         <div key={i} className="flex items-center gap-2">
           <div className="flex flex-col items-center gap-1">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
               i < current ? 'bg-red-600 text-white' :
-              i === current ? 'bg-red-600 text-white ring-2 ring-red-400' :
-              'bg-zinc-800 text-zinc-500'
+              i === current ? 'bg-red-600 text-white ring-2 ring-red-200' :
+              'bg-gray-100 text-gray-400'
             }`}>
               {i < current ? '✓' : i + 1}
             </div>
-            <span className={`text-[10px] font-medium ${i === current ? 'text-red-400' : 'text-zinc-600'}`}>
+            <span className={`text-[10px] font-medium ${i === current ? 'text-red-500' : 'text-gray-400'}`}>
               {label}
             </span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className={`w-12 h-px mb-4 transition-colors ${i < current ? 'bg-red-600' : 'bg-zinc-800'}`} />
+            <div className={`w-10 h-px mb-4 transition-colors ${i < current ? 'bg-red-400' : 'bg-gray-200'}`} />
           )}
         </div>
       ))}
@@ -125,14 +91,14 @@ export function BecomeCompanionForm({ onCancel, onSuccess }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { cidades, loading: loadingCidades } = useCidades(form.state);
+  const cityOptions = cidades.map(c => ({ value: c, label: c }));
 
-  const set = (field: keyof FormData) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+  const set = (field: keyof FormData) => (value: string) =>
+    setForm(prev => ({ ...prev, [field]: value }));
+
+  const setNative = (field: keyof FormData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm(prev => ({ ...prev, [field]: e.target.value }));
-
-  const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setForm(prev => ({ ...prev, state: e.target.value, city: '' }));
-  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,15 +131,12 @@ export function BecomeCompanionForm({ onCancel, onSuccess }: Props) {
     return true;
   };
 
-  const handleNext = () => {
-    if (validateStep()) setStep(s => s + 1);
-  };
+  const handleNext = () => { if (validateStep()) setStep(s => s + 1); };
 
   const handleSubmit = async () => {
     if (!validateStep()) return;
     setLoading(true);
     setError('');
-
     try {
       const userResponse = await api.get('/users/me');
       const userId = userResponse.data.id;
@@ -198,13 +161,11 @@ export function BecomeCompanionForm({ onCancel, onSuccess }: Props) {
       formData.append('file', photo!);
       formData.append('type', 'PHOTO');
       formData.append('isProfilePicture', 'true');
-
       await api.post(`/companions/${userId}/media`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       onSuccess();
-
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao criar perfil. Tente novamente.');
     } finally {
@@ -215,192 +176,130 @@ export function BecomeCompanionForm({ onCancel, onSuccess }: Props) {
   return (
     <div className="px-4 py-8 max-w-lg mx-auto animate-in fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-white">Criar Perfil</h1>
-        <p className="text-zinc-400 text-sm mt-1">Preencha suas informações para anunciar no Sensara.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Criar Perfil</h1>
+        <p className="text-gray-400 text-sm mt-1">Preencha suas informações para anunciar no Sensara.</p>
       </div>
 
       <StepIndicator current={step} />
 
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-6">
+      <Card className="p-6">
 
         {/* STEP 0 — Dados pessoais */}
         {step === 0 && (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-red-500 mb-2">
-              <User size={18} />
+            <div className="flex items-center gap-2 text-red-500 mb-1">
+              <User size={16} />
               <span className="font-semibold text-sm">Informações Pessoais</span>
             </div>
 
-            <InputField
-              label="Nome artístico *"
-              placeholder="Como quer ser chamada"
-              value={form.nickname}
-              onChange={set('nickname')}
-            />
-            <InputField
-              label="Idade *"
-              type="number"
-              placeholder="Ex: 25"
-              min={18}
-              max={70}
-              value={form.age}
-              onChange={set('age')}
-            />
+            <Input label="Nome artístico *" placeholder="Como quer ser chamada" value={form.nickname} onChange={setNative('nickname')} />
+            <Input label="Idade *" type="number" placeholder="Ex: 25" min={18} max={70} value={form.age} onChange={setNative('age')} />
+
             <div className="grid grid-cols-2 gap-3">
-              <InputField label="Altura (cm) *" type="number" placeholder="Ex: 165" value={form.height} onChange={set('height')} />
-              <InputField label="Peso (kg) *" type="number" placeholder="Ex: 60" value={form.weight} onChange={set('weight')} />
+              <Input label="Altura (cm) *" type="number" placeholder="165" value={form.height} onChange={setNative('height')} />
+              <Input label="Peso (kg) *" type="number" placeholder="60" value={form.weight} onChange={setNative('weight')} />
             </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <SelectField label="Etnia *" options={ETHNICITY_OPTIONS} value={form.ethnicity} onChange={set('ethnicity')} />
-              <SelectField label="Cabelo" options={HAIR_OPTIONS} value={form.hairColor} onChange={set('hairColor')} />
+              <Select label="Etnia *" options={ETHNICITY_OPTIONS} value={form.ethnicity} onChange={set('ethnicity')} placeholder="Selecione" />
+              <Select label="Cabelo" options={HAIR_OPTIONS} value={form.hairColor} onChange={set('hairColor')} placeholder="Selecione" />
             </div>
-            <SelectField label="Olhos" options={EYE_OPTIONS} value={form.eyeColor} onChange={set('eyeColor')} />
-            <InputField
-              label="WhatsApp *"
-              placeholder="(47) 99999-9999"
-              value={form.whatsapp}
-              onChange={set('whatsapp')}
-            />
-            <InputField
-              label="Valor base (R$) *"
-              type="number"
-              placeholder="Ex: 300"
-              value={form.basePrice}
-              onChange={set('basePrice')}
-            />
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Bio</label>
-              <textarea
-                rows={3}
-                placeholder="Fale um pouco sobre você..."
-                value={form.bio}
-                onChange={set('bio')}
-                className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 resize-none transition-all"
-              />
-            </div>
+
+            <Select label="Olhos" options={EYE_OPTIONS} value={form.eyeColor} onChange={set('eyeColor')} placeholder="Selecione" />
+            <Input label="WhatsApp *" placeholder="(47) 99999-9999" value={form.whatsapp} onChange={setNative('whatsapp')} />
+            <Input label="Valor base (R$) *" type="number" placeholder="Ex: 300" value={form.basePrice} onChange={setNative('basePrice')} />
+            <Textarea label="Bio" rows={3} placeholder="Fale um pouco sobre você..." value={form.bio} onChange={setNative('bio')} />
           </div>
         )}
 
         {/* STEP 1 — Localização */}
         {step === 1 && (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-red-500 mb-2">
-              <MapPin size={18} />
+            <div className="flex items-center gap-2 text-red-500 mb-1">
+              <MapPin size={16} />
               <span className="font-semibold text-sm">Localização</span>
             </div>
 
-            <SelectField
+            <Select
               label="Estado *"
-              options={STATES}
+              options={STATE_OPTIONS}
               value={form.state}
-              onChange={handleStateChange}
+              onChange={(value) => { set('state')(value); set('city')(''); }}
+              placeholder="Selecione"
             />
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Cidade *</label>
-              <select
-                value={form.city}
-                onChange={set('city')}
-                disabled={!form.state || loadingCidades}
-                className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all appearance-none disabled:opacity-50"
-              >
-                <option value="">
-                  {loadingCidades
-                    ? 'Carregando cidades...'
-                    : !form.state
-                    ? 'Selecione um estado primeiro'
-                    : 'Selecione a cidade'}
-                </option>
-                {cidades.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            <InputField
-              label="Bairro"
-              placeholder="Ex: Centro"
-              value={form.neighborhood}
-              onChange={set('neighborhood')}
+            <Select
+              label="Cidade *"
+              options={cityOptions}
+              value={form.city}
+              onChange={set('city')}
+              placeholder={loadingCidades ? 'Carregando...' : !form.state ? 'Selecione um estado primeiro' : 'Selecione a cidade'}
+              disabled={!form.state || loadingCidades}
             />
+
+            <Input label="Bairro" placeholder="Ex: Centro" value={form.neighborhood} onChange={setNative('neighborhood')} />
           </div>
         )}
 
         {/* STEP 2 — Foto */}
         {step === 2 && (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-red-500 mb-2">
-              <Camera size={18} />
+            <div className="flex items-center gap-2 text-red-500 mb-1">
+              <Camera size={16} />
               <span className="font-semibold text-sm">Foto de Perfil</span>
             </div>
 
-            <p className="text-zinc-400 text-sm">Esta será sua foto principal. Use uma foto de boa qualidade.</p>
+            <p className="text-gray-400 text-sm">Esta será sua foto principal. Use uma foto de boa qualidade.</p>
 
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="aspect-[3/4] max-w-xs mx-auto w-full bg-zinc-900 border-2 border-dashed border-zinc-700 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-red-600 transition-colors overflow-hidden"
+              className="aspect-[3/4] max-w-xs mx-auto w-full bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-all overflow-hidden group"
             >
               {photoPreview ? (
-                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
               ) : (
-                <div className="flex flex-col items-center gap-3 text-zinc-500">
-                  <Camera size={40} />
+                <div className="flex flex-col items-center gap-3 text-gray-400 group-hover:text-red-400 transition-colors">
+                  <Camera size={36} />
                   <span className="text-sm font-medium">Clique para selecionar</span>
-                  <span className="text-xs">JPG, PNG até 10MB</span>
+                  <span className="text-xs text-gray-300">JPG, PNG até 10MB</span>
                 </div>
               )}
             </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoChange}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
 
             {photo && (
-              <p className="text-green-500 text-sm text-center">✓ {photo.name}</p>
+              <p className="text-green-600 text-sm text-center font-medium">✓ {photo.name}</p>
             )}
           </div>
         )}
 
         {/* Erro */}
-        {error && (
-          <div className="mt-4 bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="mt-4"><Alert message={error} /></div>}
 
         {/* Navegação */}
         <div className="flex justify-between mt-6 gap-3">
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             onClick={step === 0 ? onCancel : () => setStep(s => s - 1)}
-            className="flex items-center gap-2 px-4 py-2 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-colors"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
             {step === 0 ? 'Cancelar' : 'Voltar'}
-          </button>
+          </Button>
 
           {step < STEPS.length - 1 ? (
-            <button
-              onClick={handleNext}
-              className="flex items-center gap-2 px-6 py-2 rounded bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
-            >
+            <Button variant="primary" size="md" onClick={handleNext}>
               Próximo
-              <ChevronRight size={18} />
-            </button>
+              <ChevronRight size={16} />
+            </Button>
           ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-2 rounded bg-red-600 hover:bg-red-700 text-white font-bold transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Criando perfil...' : 'Criar Perfil'}
-            </button>
+            <Button variant="primary" size="md" loading={loading} onClick={handleSubmit}>
+              Criar Perfil
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

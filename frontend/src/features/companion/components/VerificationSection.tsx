@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../../core/api/axios';
 import { ShieldCheck, Camera, FileText, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { Card, Alert, Button } from '../../../core/ui';
 
 interface VerificationData {
   selfieStatus: string;
@@ -9,10 +10,10 @@ interface VerificationData {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  NOT_SUBMITTED: { label: 'Não enviado', color: 'text-zinc-500', icon: <AlertCircle size={16} /> },
-  PENDING:       { label: 'Em análise',  color: 'text-yellow-500', icon: <Clock size={16} /> },
-  APPROVED:      { label: 'Aprovado',    color: 'text-green-500',  icon: <CheckCircle size={16} /> },
-  REJECTED:      { label: 'Reprovado',   color: 'text-red-500',    icon: <XCircle size={16} /> },
+  NOT_SUBMITTED: { label: 'Não enviado', color: 'text-gray-400',   icon: <AlertCircle size={14} /> },
+  PENDING:       { label: 'Em análise',  color: 'text-yellow-500', icon: <Clock size={14} /> },
+  APPROVED:      { label: 'Aprovado',    color: 'text-green-500',  icon: <CheckCircle size={14} /> },
+  REJECTED:      { label: 'Reprovado',   color: 'text-red-500',    icon: <XCircle size={14} /> },
 };
 
 function ScoreRing({ score }: { score: number }) {
@@ -20,38 +21,34 @@ function ScoreRing({ score }: { score: number }) {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const color = score === 100 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
+  const trackColor = score === 100 ? '#dcfce7' : score >= 50 ? '#fef9c3' : '#fee2e2';
 
   return (
-    <div className="relative w-24 h-24 flex items-center justify-center">
-      <svg className="absolute" width="96" height="96" viewBox="0 0 96 96">
-        <circle cx="48" cy="48" r={radius} fill="none" stroke="#27272a" strokeWidth="8" />
+    <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
+      <svg className="absolute" width="80" height="80" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r={radius} fill="none" stroke={trackColor} strokeWidth="7" />
         <circle
-          cx="48" cy="48" r={radius}
+          cx="40" cy="40" r={radius}
           fill="none"
           stroke={color}
-          strokeWidth="8"
+          strokeWidth="7"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          transform="rotate(-90 48 48)"
+          transform="rotate(-90 40 40)"
           style={{ transition: 'stroke-dashoffset 0.6s ease' }}
         />
       </svg>
       <div className="flex flex-col items-center">
-        <span className="text-xl font-black text-white">{score}%</span>
-        <span className="text-[10px] text-zinc-500">Score</span>
+        <span className="text-base font-black text-gray-900">{score}%</span>
+        <span className="text-[9px] text-gray-400 font-medium">Score</span>
       </div>
     </div>
   );
 }
 
 function UploadItem({
-  label,
-  description,
-  status,
-  icon,
-  onUpload,
-  uploading,
+  label, description, status, icon, onUpload, uploading,
 }: {
   label: string;
   description: string;
@@ -64,33 +61,40 @@ function UploadItem({
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG['NOT_SUBMITTED'];
   const canUpload = status === 'NOT_SUBMITTED' || status === 'REJECTED';
 
+  const statusBg: Record<string, string> = {
+    NOT_SUBMITTED: 'bg-gray-100',
+    PENDING: 'bg-yellow-50',
+    APPROVED: 'bg-green-50',
+    REJECTED: 'bg-red-50',
+  };
+
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center flex-shrink-0 text-zinc-400">
-            {icon}
-          </div>
-          <div>
-            <p className="text-white font-semibold text-sm">{label}</p>
-            <p className="text-zinc-500 text-xs mt-0.5">{description}</p>
-            <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${config.color}`}>
-              {config.icon}
-              {config.label}
-            </div>
+    <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl">
+      <div className="flex items-center gap-3">
+        <div className={`w-9 h-9 ${statusBg[status] ?? 'bg-gray-100'} rounded-lg flex items-center justify-center flex-shrink-0 text-gray-500`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-gray-900 font-semibold text-sm">{label}</p>
+          <p className="text-gray-400 text-xs mt-0.5 hidden sm:block">{description}</p>
+          <div className={`flex items-center gap-1 mt-0.5 text-xs font-medium ${config.color}`}>
+            {config.icon}
+            {config.label}
           </div>
         </div>
-
-        {canUpload && (
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex-shrink-0 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
-          >
-            {uploading ? '...' : 'Enviar'}
-          </button>
-        )}
       </div>
+
+      {canUpload && (
+        <Button
+          variant="primary"
+          size="sm"
+          loading={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="flex-shrink-0"
+        >
+          {uploading ? '' : 'Enviar'}
+        </Button>
+      )}
 
       <input
         ref={fileRef}
@@ -115,11 +119,7 @@ export function VerificationSection() {
   const fetchVerification = () => {
     api.get('/companions/me/verification')
       .then(res => setData(res.data))
-      .catch(() => setData({
-        selfieStatus: 'NOT_SUBMITTED',
-        documentStatus: 'NOT_SUBMITTED',
-        reliabilityScore: 0,
-      }));
+      .catch(() => setData({ selfieStatus: 'NOT_SUBMITTED', documentStatus: 'NOT_SUBMITTED', reliabilityScore: 0 }));
   };
 
   useEffect(() => { fetchVerification(); }, []);
@@ -128,7 +128,6 @@ export function VerificationSection() {
     setError('');
     if (type === 'selfie') setUploadingSelfie(true);
     else setUploadingDocument(true);
-
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -147,62 +146,62 @@ export function VerificationSection() {
   if (!data) return null;
 
   return (
-    <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 space-y-4">
+    <Card className="p-5 space-y-4">
 
-      {/* Header com score */}
-      <div className="flex items-center gap-5">
+      {/* Header */}
+      <div className="flex items-center gap-4">
         <ScoreRing score={data.reliabilityScore} />
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck size={18} className={data.reliabilityScore === 100 ? 'text-green-500' : 'text-zinc-500'} />
-            <h3 className="text-white font-bold">Verificação de Identidade</h3>
+            <ShieldCheck
+              size={16}
+              className={data.reliabilityScore === 100 ? 'text-green-500' : 'text-gray-400'}
+            />
+            <h3 className="text-gray-900 font-bold text-sm">Verificação de Identidade</h3>
           </div>
-          <p className="text-zinc-400 text-xs leading-relaxed">
+          <p className="text-gray-400 text-xs leading-relaxed">
             {data.reliabilityScore === 100
-              ? <span className="text-green-500 font-semibold">Perfil 100% verificado! Badge exibido no seu perfil.</span>
+              ? <span className="text-green-600 font-semibold">Perfil 100% verificado! Badge exibido no seu perfil.</span>
               : 'Envie sua selfie e documento para ganhar o badge de verificada.'}
           </p>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg text-xs">
-          {error}
-        </div>
-      )}
+      {error && <Alert message={error} />}
 
-      <UploadItem
-        label="Selfie"
-        description="Foto do seu rosto claramente visível. +50% de confiabilidade."
-        status={data.selfieStatus}
-        icon={<Camera size={20} />}
-        onUpload={file => handleUpload('selfie', file)}
-        uploading={uploadingSelfie}
-      />
-
-      <UploadItem
-        label="Documento"
-        description="RG, CNH ou Passaporte. +50% de confiabilidade."
-        status={data.documentStatus}
-        icon={<FileText size={20} />}
-        onUpload={file => handleUpload('document', file)}
-        uploading={uploadingDocument}
-      />
+      <div className="space-y-2">
+        <UploadItem
+          label="Selfie"
+          description="Foto do seu rosto claramente visível. +50% de confiabilidade."
+          status={data.selfieStatus}
+          icon={<Camera size={18} />}
+          onUpload={file => handleUpload('selfie', file)}
+          uploading={uploadingSelfie}
+        />
+        <UploadItem
+          label="Documento"
+          description="RG, CNH ou Passaporte. +50% de confiabilidade."
+          status={data.documentStatus}
+          icon={<FileText size={18} />}
+          onUpload={file => handleUpload('document', file)}
+          uploading={uploadingDocument}
+        />
+      </div>
 
       {/* Legenda */}
-      <div className="grid grid-cols-2 gap-2 pt-2">
+      <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-gray-100">
         {[
-          { score: '0%',   label: 'Sem verificação',     color: 'bg-red-500' },
-          { score: '50%',  label: 'Selfie aprovada',      color: 'bg-yellow-500' },
-          { score: '50%',  label: 'Documento aprovado',   color: 'bg-yellow-500' },
+          { score: '0%',   label: 'Sem verificação',      color: 'bg-red-400' },
+          { score: '50%',  label: 'Selfie aprovada',       color: 'bg-yellow-400' },
+          { score: '50%',  label: 'Documento aprovado',    color: 'bg-yellow-400' },
           { score: '100%', label: 'Totalmente verificada', color: 'bg-green-500' },
         ].map((item, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${item.color}`} />
-            <span className="text-zinc-500 text-xs">{item.score} — {item.label}</span>
+          <div key={i} className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.color}`} />
+            <span className="text-gray-400 text-xs">{item.score} — {item.label}</span>
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }

@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../core/api/axios';
 import type { Companion, PageResponse } from '../../core/types/companion';
 import { MapPin, ShieldCheck, User, SlidersHorizontal, X } from 'lucide-react';
+import { Select, Input, Button, Card } from '../../core/ui';
 
-// Hook de cidades do IBGE (mesmo do formulário)
 function useCidades(state: string) {
   const [cidades, setCidades] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,8 @@ const STATES = [
   'RS','RO','RR','SC','SP','SE','TO'
 ];
 
-const ETHNICITY_OPTIONS = ['Branca', 'Parda', 'Negra', 'Asiática', 'Indígena', 'Outra'];
+const STATE_OPTIONS = STATES.map(s => ({ value: s, label: s }));
+const ETHNICITY_OPTIONS = ['Branca', 'Parda', 'Negra', 'Asiática', 'Indígena', 'Outra'].map(e => ({ value: e, label: e }));
 
 interface Filters {
   state: string;
@@ -43,10 +44,6 @@ const INITIAL_FILTERS: Filters = {
   state: '', city: '', minAge: '', maxAge: '', maxPrice: '', ethnicity: '',
 };
 
-function hasActiveFilters(f: Filters) {
-  return Object.values(f).some(v => v !== '');
-}
-
 export function Search() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
@@ -57,17 +54,15 @@ export function Search() {
   const [totalResults, setTotalResults] = useState(0);
 
   const { cidades, loading: loadingCidades } = useCidades(filters.state);
+  const cityOptions = cidades.map(c => ({ value: c, label: c }));
 
-  const set = (field: keyof Filters) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
-      setFilters(prev => ({
-        ...prev,
-        [field]: value,
-        // reseta cidade ao trocar estado
-        ...(field === 'state' ? { city: '' } : {}),
-      }));
-    };
+  const setField = (field: keyof Filters) => (value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value,
+      ...(field === 'state' ? { city: '' } : {}),
+    }));
+  };
 
   const buildParams = () => {
     const params = new URLSearchParams();
@@ -104,28 +99,30 @@ export function Search() {
     setTotalResults(0);
   };
 
+  const hasFilters = Object.values(filters).some(v => v !== '');
+
   return (
     <div className="px-4 py-6 max-w-3xl mx-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">Busca</h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-2xl font-bold text-gray-900">Busca</h1>
         <div className="flex items-center gap-2">
-          {hasActiveFilters(filters) && (
+          {hasFilters && (
             <button
               onClick={handleClear}
-              className="flex items-center gap-1 text-xs text-zinc-400 hover:text-red-500 transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors font-medium"
             >
-              <X size={14} /> Limpar
+              <X size={13} /> Limpar
             </button>
           )}
           <button
             onClick={() => setShowFilters(v => !v)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              showFilters ? 'bg-red-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              showFilters ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            <SlidersHorizontal size={16} />
+            <SlidersHorizontal size={15} />
             Filtros
           </button>
         </div>
@@ -133,116 +130,87 @@ export function Search() {
 
       {/* Painel de filtros */}
       {showFilters && (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 mb-6 space-y-4 animate-in fade-in">
+        <Card className="p-5 mb-5 space-y-4">
 
-          {/* Localização */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Estado</label>
-              <select
-                value={filters.state}
-                onChange={set('state')}
-                className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all appearance-none text-sm"
-              >
-                <option value="">Todos</option>
-                {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Cidade</label>
-              <select
-                value={filters.city}
-                onChange={set('city')}
-                disabled={!filters.state || loadingCidades}
-                className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all appearance-none disabled:opacity-50 text-sm"
-              >
-                <option value="">
-                  {loadingCidades ? 'Carregando...' : !filters.state ? 'Selecione estado' : 'Todas'}
-                </option>
-                {cidades.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Idade */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Idade</label>
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                type="number"
-                placeholder="Mínima"
-                min={18}
-                max={70}
-                value={filters.minAge}
-                onChange={set('minAge')}
-                className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all text-sm"
-              />
-              <input
-                type="number"
-                placeholder="Máxima"
-                min={18}
-                max={70}
-                value={filters.maxAge}
-                onChange={set('maxAge')}
-                className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Preço máximo */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Valor máximo (R$)</label>
-            <input
-              type="number"
-              placeholder="Ex: 500"
-              value={filters.maxPrice}
-              onChange={set('maxPrice')}
-              className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all text-sm"
+            <Select
+              label="Estado"
+              value={filters.state}
+              onChange={setField('state')}
+              options={STATE_OPTIONS}
+              placeholder="Todos"
+            />
+            <Select
+              label="Cidade"
+              value={filters.city}
+              onChange={setField('city')}
+              options={cityOptions}
+              placeholder={loadingCidades ? 'Carregando...' : !filters.state ? 'Selecione estado' : 'Todas'}
+              disabled={!filters.state || loadingCidades}
             />
           </div>
 
-          {/* Etnia */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Etnia</label>
-            <select
-              value={filters.ethnicity}
-              onChange={set('ethnicity')}
-              className="bg-zinc-900 border border-zinc-800 text-white p-3 rounded focus:outline-none focus:border-red-600 transition-all appearance-none text-sm"
-            >
-              <option value="">Todas</option>
-              {ETHNICITY_OPTIONS.map(e => <option key={e} value={e}>{e}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Idade mínima"
+              type="number"
+              placeholder="18"
+              min={18}
+              max={70}
+              value={filters.minAge}
+              onChange={e => setField('minAge')(e.target.value)}
+            />
+            <Input
+              label="Idade máxima"
+              type="number"
+              placeholder="70"
+              min={18}
+              max={70}
+              value={filters.maxAge}
+              onChange={e => setField('maxAge')(e.target.value)}
+            />
           </div>
 
-          {/* Botão buscar */}
-          <button
-            onClick={handleSearch}
-            disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Buscando...' : 'Buscar'}
-          </button>
-        </div>
+          <Input
+            label="Valor máximo (R$)"
+            type="number"
+            placeholder="Ex: 500"
+            value={filters.maxPrice}
+            onChange={e => setField('maxPrice')(e.target.value)}
+          />
+
+          <Select
+            label="Etnia"
+            value={filters.ethnicity}
+            onChange={setField('ethnicity')}
+            options={ETHNICITY_OPTIONS}
+            placeholder="Todas"
+          />
+
+          <Button variant="primary" size="lg" loading={loading} onClick={handleSearch} className="w-full">
+            Buscar
+          </Button>
+        </Card>
       )}
 
-      {/* Resultados */}
+      {/* Loading */}
       {loading && (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600" />
         </div>
       )}
 
+      {/* Resultados */}
       {!loading && searched && (
         <>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-zinc-400 text-sm">
-              <span className="text-white font-semibold">{totalResults}</span> resultado{totalResults !== 1 ? 's' : ''} encontrado{totalResults !== 1 ? 's' : ''}
+            <p className="text-gray-500 text-sm">
+              <span className="text-gray-900 font-semibold">{totalResults}</span> resultado{totalResults !== 1 ? 's' : ''} encontrado{totalResults !== 1 ? 's' : ''}
             </p>
             {!showFilters && (
               <button
                 onClick={() => setShowFilters(true)}
-                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 transition-colors"
+                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 font-medium transition-colors"
               >
                 <SlidersHorizontal size={13} /> Editar filtros
               </button>
@@ -250,19 +218,19 @@ export function Search() {
           </div>
 
           {companions.length === 0 ? (
-            <div className="text-center py-16 bg-zinc-950 rounded-xl border border-zinc-800">
-              <p className="text-zinc-500 mb-2">Nenhum perfil encontrado.</p>
-              <p className="text-zinc-600 text-sm">Tente ajustar os filtros.</p>
-            </div>
+            <Card className="text-center py-16 space-y-2">
+              <p className="text-gray-400">Nenhum perfil encontrado.</p>
+              <p className="text-gray-300 text-sm">Tente ajustar os filtros.</p>
+            </Card>
           ) : (
             <div className="grid grid-cols-2 gap-4">
               {companions.map(companion => (
                 <div
                   key={companion.id}
                   onClick={() => navigate(`/companions/${companion.id}`)}
-                  className="bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-red-600/50 transition-colors cursor-pointer group"
+                  className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-red-200 hover:shadow-md transition-all cursor-pointer group"
                 >
-                  <div className="aspect-[3/4] bg-zinc-800 relative overflow-hidden">
+                  <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
                     {companion.profilePictureUrl ? (
                       <img
                         src={`http://localhost:8080${companion.profilePictureUrl}`}
@@ -271,25 +239,24 @@ export function Search() {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <User size={40} className="text-zinc-600" />
+                        <User size={40} className="text-gray-300" />
                       </div>
                     )}
-                    {companion.verified && (
-                      <div className="absolute top-2 right-2 bg-green-500 text-black text-xs font-bold px-2 py-1 rounded flex items-center gap-1 shadow-lg">
-                        <ShieldCheck size={12} /> Verificada
+                    {companion.reliabilityScore === 100 && (
+                      <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow">
+                        <ShieldCheck size={11} /> Verificada
                       </div>
                     )}
                   </div>
-
                   <div className="p-3">
-                    <h3 className="font-bold text-white text-base truncate group-hover:text-red-500 transition-colors">
+                    <h3 className="font-bold text-gray-900 text-sm truncate group-hover:text-red-600 transition-colors">
                       {companion.nickname}, {companion.age}
                     </h3>
-                    <div className="flex items-center text-zinc-400 text-xs mt-1 mb-2">
+                    <div className="flex items-center text-gray-400 text-xs mt-1 mb-2">
                       <MapPin size={11} className="mr-1 flex-shrink-0" />
                       <span className="truncate">{companion.city}, {companion.state}</span>
                     </div>
-                    <p className="text-red-500 font-semibold text-sm">
+                    <p className="text-red-600 font-semibold text-sm">
                       R$ {companion.basePrice?.toFixed(2) ?? 'A consultar'}
                     </p>
                   </div>

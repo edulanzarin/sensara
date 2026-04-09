@@ -6,48 +6,61 @@ export function TopBar() {
   const { token, role, isCompanion, logout } = useAuth();
 
   return (
-    <header className="fixed top-0 w-full h-16 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 z-50">
+    <header className="fixed top-0 w-full h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-50 shadow-sm">
       <Link to="/" className="text-2xl font-black tracking-tighter text-red-600">
         SENSARA
       </Link>
 
-      {token ? (
-        <div className="flex items-center gap-3">
-          {role === 'ADMIN' && (
-            <Link
-              to="/admin"
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors px-4 py-2 rounded font-semibold text-white text-sm"
+      <div className="flex items-center gap-2">
+        {token ? (
+          <>
+            {role === 'ADMIN' && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors px-4 py-2 rounded-xl font-semibold text-white text-sm"
+              >
+                <ShieldCheck size={16} />
+                <span>Admin</span>
+              </Link>
+            )}
+
+            {isCompanion && role !== 'ADMIN' && (
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 transition-colors px-4 py-2 rounded-xl font-semibold text-gray-700 text-sm"
+              >
+                <LayoutDashboard size={16} />
+                <span>Painel</span>
+              </Link>
+            )}
+
+            {!isCompanion && role !== 'ADMIN' && (
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors px-4 py-2 rounded-xl font-semibold text-white text-sm"
+              >
+                Painel
+              </Link>
+            )}
+
+            <button
+              onClick={logout}
+              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-gray-100"
+              title="Sair"
             >
-              <ShieldCheck size={18} />
-              <span className="hidden md:block">Admin</span>
-            </Link>
-          )}
-          {isCompanion && role !== 'ADMIN' && (
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 transition-colors px-4 py-2 rounded font-semibold text-white text-sm"
-            >
-              <LayoutDashboard size={18} />
-              <span className="hidden md:block">Painel</span>
-            </Link>
-          )}
-          <button
-            onClick={logout}
-            className="text-zinc-400 hover:text-red-500 transition-colors"
-            title="Sair"
+              <LogOut size={18} />
+            </button>
+          </>
+        ) : (
+          <Link
+            to="/login"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors px-4 py-2 rounded-xl font-semibold text-white text-sm"
           >
-            <LogOut size={20} />
-          </button>
-        </div>
-      ) : (
-        <Link
-          to="/login"
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors px-4 py-2 rounded font-semibold text-white text-sm"
-        >
-          <User size={18} />
-          <span className="hidden md:block">Entrar / Cadastrar</span>
-        </Link>
-      )}
+            <User size={16} />
+            <span>Entrar</span>
+          </Link>
+        )}
+      </div>
     </header>
   );
 }
